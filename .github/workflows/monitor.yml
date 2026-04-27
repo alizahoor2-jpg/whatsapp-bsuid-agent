@@ -8,6 +8,7 @@ on:
 jobs:
   monitor:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       
@@ -22,8 +23,7 @@ jobs:
           playwright install chromium
           
       - name: Run monitor
-        run: |
-          python3 whatsapp_monitor.py
+        run: python3 whatsapp_monitor.py
         env:
           SENDER: mohdalizahoor@gmail.com
           PASSWORD: qlwb lerb nwom owna
