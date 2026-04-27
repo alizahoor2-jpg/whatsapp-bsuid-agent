@@ -230,8 +230,6 @@ def main():
         else:
             print(f"  No change - sending check-in email...")
             send_email(title, url, {}, has_changes=False)
-        else:
-            print(f"  No change")
         
         save_state(state)
     
