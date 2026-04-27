@@ -81,12 +81,48 @@ def get_sentences(content):
     return sent_set
 
 
+def get_code_blocks(content):
+    code_blocks = re.findall(r'```[\s\S]*?```', content)
+    code_set = set()
+    for c in code_blocks:
+        c = c.strip()
+        if len(c) > 10:
+            code_set.add(c)
+    return code_set
+
+
+def get_parameters(content):
+    params = re.findall(r'([a-zA-Z_][a-zA-Z0-9_]*)\s*[:=]', content)
+    return set(params)
+
+
 def analyze_changes(old_content, new_content):
     old_sent = get_sentences(old_content)
     new_sent = get_sentences(new_content)
-    added = new_sent - old_sent
-    removed = old_sent - new_sent
-    return {"new": list(added), "removed": list(removed)}
+    
+    old_code = get_code_blocks(old_content)
+    new_code = get_code_blocks(new_content)
+    
+    old_params = get_parameters(old_content)
+    new_params = get_parameters(new_content)
+    
+    new_things = []
+    
+    # New sentences
+    for s in new_sent - old_sent:
+        new_things.append(("SENTENCE", s))
+    
+    # New code examples
+    for c in new_code - old_code:
+        new_things.append(("CODE", c))
+    
+    # New parameters
+    for p in new_params - old_params:
+        new_things.append(("PARAMETER", p))
+    
+    removed = list(old_sent - new_sent)
+    
+    return {"new": new_things, "removed": removed}
 
 
 def send_email(title, url, changes, has_changes=True):
@@ -95,16 +131,20 @@ def send_email(title, url, changes, has_changes=True):
 
     if has_changes and changes.get("new"):
         subject = f"BSUID DOCS UPDATED - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-        body = "=" * 70 + "\nBSUID DOCS UPDATED - NEW INFO\n" + "=" * 70 + "\n\n"
+        body = "=" * 70 + "\nBSUID DOCS UPDATED - ALL NEW CHANGES\n" + "=" * 70 + "\n\n"
         body += f"URL: {url}\n"
         body += f"Checked: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         
-        body += "-" * 70 + "\n"
-        body += "NEW INFORMATION ADDED\n"
-        body += "-" * 70 + "\n\n"
+        new_count = 0
+        for kind, item in changes["new"]:
+            new_count += 1
+            body += f"\n{'=' * 70}\n"
+            body += f"NEW {kind} (#{new_count})\n"
+            body += f"{'=' * 70}\n\n"
+            body += f"{item}\n\n"
         
-        for i, sent in enumerate(changes["new"], 1):
-            body += f"{i}. {sent}\n\n"
+        body += "-" * 70 + "\n"
+        body += f"TOTAL: {new_count} new item(s) detected\n"
     else:
         subject = f"BSUID DOCS CHECK - NO CHANGES - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
         body = "=" * 70 + "\nBSUID DOCS CHECK\n" + "=" * 70 + "\n\n"
