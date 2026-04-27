@@ -2,7 +2,6 @@ name: BSUID Monitor
 
 on:
   schedule:
-    # Run every 3 hours
     - cron: '0 */3 * * *'
   workflow_dispatch:
 
@@ -24,7 +23,7 @@ jobs:
           
       - name: Run monitor
         env:
-          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
-          SENDER_APP_PASSWORD: ${{ secrets.SENDER_APP_PASSWORD }}
-          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+          SENDER: ${{ secrets.SENDER }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          RECIPIENT: ${{ secrets.RECIPIENT }}
         run: python3 whatsapp_monitor.py

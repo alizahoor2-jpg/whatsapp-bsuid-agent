@@ -23,9 +23,9 @@ DOCS_URLS = [
 
 STATE_FILE = "whatsapp_bsuid_state.json"
 
-SENDER_EMAIL = os.getenv("SENDER_EMAIL", "")
-SENDER_APP_PASSWORD = os.getenv("SENDER_APP_PASSWORD", "")
-RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL", "")
+SENDER_EMAIL = os.getenv("SENDER", "")
+SENDER_APP_PASSWORD = os.getenv("PASSWORD", "")
+RECIPIENT_EMAIL = os.getenv("RECIPIENT", "")
 
 
 def fetch_page(url):
