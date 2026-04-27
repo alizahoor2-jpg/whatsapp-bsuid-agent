@@ -40,7 +40,6 @@ def fetch_page(url):
             )
             page.goto(url, timeout=30000, wait_until="networkidle")
             
-            # Get all sections with IDs
             sections = []
             try:
                 section_elements = page.query_selector_all("h2[id], h3[id]")
@@ -91,7 +90,6 @@ def save_state(state):
 
 
 def get_sentences(content):
-    # Split into sentences
     sentences = re.split(r'(?<=[.!?])\s+', content)
     sent_set = set()
     for s in sentences:
@@ -99,16 +97,6 @@ def get_sentences(content):
         if len(s) > 20 and len(s) < 500:
             sent_set.add(s)
     return sent_set
-
-
-def get_words(content):
-    words = re.findall(r'\b[a-zA-Z]{3,}\b', content.lower())
-    return set(words)
-
-
-def get_code_examples(content):
-    code_blocks = re.findall(r'```[\s\S]*?```', content)
-    return code_blocks
 
 
 def analyze_changes(old_content, new_content):
@@ -212,6 +200,8 @@ def main():
         content_hash = hash_content(content)
         old_hash = state.get(title, {}).get("hash")
         
+        need_save = False
+        
         if old_hash != content_hash:
             old_content = state.get(title, {}).get("content", "")
             changes = analyze_changes(old_content, content)
@@ -222,6 +212,8 @@ def main():
                 "last_checked": datetime.now().isoformat()
             }
             
+            need_save = True
+            
             if old_hash:
                 print(f"  CHANGE DETECTED! Sending email...")
                 send_email(title, url, changes, has_changes=True)
@@ -231,7 +223,8 @@ def main():
             print(f"  No change - sending check-in email...")
             send_email(title, url, {}, has_changes=False)
         
-        save_state(state)
+        if need_save:
+            save_state(state)
     
     print("Done.")
 
