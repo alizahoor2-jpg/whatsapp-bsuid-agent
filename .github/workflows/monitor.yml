@@ -22,8 +22,9 @@ jobs:
           playwright install chromium
           
       - name: Run monitor
+        run: |
+          python3 whatsapp_monitor.py
         env:
           SENDER: mohdalizahoor@gmail.com
           PASSWORD: qlwb lerb nwom owna
           RECIPIENT: mohdalizahoor@gmail.com
-        run: python3 whatsapp_monitor.py

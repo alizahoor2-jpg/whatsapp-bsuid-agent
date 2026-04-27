@@ -140,6 +140,8 @@ def send_email(title, url, changes):
 
 def main():
     print(f"[{datetime.now()}] Checking BSUID docs...")
+    print(f"Email: {SENDER_EMAIL}")
+    print(f"Playwright: {HAS_PLAYWRIGHT}")
     
     if not HAS_PLAYWRIGHT:
         print("ERROR: Playwright required")
