@@ -93,28 +93,20 @@ def send_email(title, url, changes, has_changes=True):
     if not SENDER_EMAIL or not SENDER_APP_PASSWORD or not RECIPIENT_EMAIL:
         return False
 
-    if has_changes:
+    if has_changes and changes.get("new"):
         subject = f"BSUID DOCS UPDATED - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-        body = "=" * 70 + "\nBSUID DOCS UPDATED\n" + "=" * 70 + "\n\n"
+        body = "=" * 70 + "\nBSUID DOCS UPDATED - NEW INFO\n" + "=" * 70 + "\n\n"
         body += f"URL: {url}\n"
         body += f"Checked: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         
-        if changes.get("new"):
-            body += f"Found {len(changes['new'])} new sentences:\n\n"
-            for i, sent in enumerate(changes["new"], 1):
-                body += f"{i}. {sent}\n\n"
+        body += "-" * 70 + "\n"
+        body += "NEW INFORMATION ADDED\n"
+        body += "-" * 70 + "\n\n"
         
-        if changes.get("removed"):
-            body += "-" * 70 + "\n"
-            body += f"Removed {len(changes['removed'])} sentences:\n\n"
-            for i, sent in enumerate(changes["removed"], 1):
-                body += f"{i}. {sent}\n\n"
+        for i, sent in enumerate(changes["new"], 1):
+            body += f"{i}. {sent}\n\n"
     else:
-        subject = f"BSUID DOCS CHECK - NO CHANGES - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-        body = "=" * 70 + "\nBSUID DOCS - NO CHANGES\n" + "=" * 70 + "\n\n"
-        body += f"URL: {url}\n"
-        body += f"Checked: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-        body += "No changes detected in the last 3 hours.\n"
+        return False
 
     msg = MIMEMultipart()
     msg["From"] = SENDER_EMAIL
@@ -161,17 +153,22 @@ def main():
         if old_hash != content_hash:
             old_content = state.get(title, {}).get("content", "")
             changes = analyze_changes(old_content, content)
-            state[title] = {"hash": content_hash, "content": content, "last_checked": datetime.now().isoformat()}
-            save_state(state)
             
-            if old_hash:
+            # Only send email if there are NEW sentences added
+            if changes.get("new") and len(changes["new"]) > 0:
+                state[title] = {"hash": content_hash, "content": content, "last_checked": datetime.now().isoformat()}
+                save_state(state)
                 print("  CHANGE DETECTED! Sending email...")
                 send_email(title, url, changes, has_changes=True)
+            elif old_hash:
+                # Content changed but no new sentences - just save
+                state[title] = {"hash": content_hash, "content": content, "last_checked": datetime.now().isoformat()}
+                save_state(state)
+                print("  Content changed but no new info")
             else:
                 print("  Initial snapshot saved")
         else:
-            print("  No change - sending check-in email...")
-            send_email(title, url, {}, has_changes=False)
+            print("  No change")
     
     print("Done.")
 
