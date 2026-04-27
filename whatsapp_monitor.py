@@ -124,42 +124,50 @@ def analyze_changes(old_content, new_content):
     }
 
 
-def send_email(title, url, changes):
+def send_email(title, url, changes, has_changes=True):
     if not SENDER_EMAIL or not SENDER_APP_PASSWORD or not RECIPIENT_EMAIL:
         print("Email not configured")
         return False
 
-    subject = f"BSUID DOCS UPDATED - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-    
-    body = "=" * 70 + "\n"
-    body += "META WHATSAPP BUSINESS SCOPED USER IDS (BSUID) DOCUMENTATION UPDATED\n"
-    body += "=" * 70 + "\n\n"
-    
-    body += f"URL: {url}\n"
-    body += f"Checked: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-    
-    body += "-" * 70 + "\n"
-    body += "NEW INFORMATION / UPDATED SENTENCES\n"
-    body += "-" * 70 + "\n\n"
-    
-    if changes.get("new_sentences"):
-        body += f"Found {len(changes['new_sentences'])} new/updated sentences:\n\n"
-        for i, sent in enumerate(changes["new_sentences"], 1):
-            body += f"{i}. {sent}\n\n"
-    else:
-        body += "No new sentences found.\n"
-    
-    if changes.get("removed_sentences"):
-        body += "\n" + "-" * 70 + "\n"
-        body += "REMOVED SECTIONS (sentences that now exist)\n"
+    if has_changes:
+        subject = f"BSUID DOCS UPDATED - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        
+        body = "=" * 70 + "\n"
+        body += "META WHATSAPP BUSINESS SCOPED USER IDS (BSUID) DOCUMENTATION UPDATED\n"
+        body += "=" * 70 + "\n\n"
+        
+        body += f"URL: {url}\n"
+        body += f"Checked: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        
+        body += "-" * 70 + "\n"
+        body += "NEW INFORMATION / UPDATED SENTENCES\n"
         body += "-" * 70 + "\n\n"
-        body += f"Found {len(changes['removed_sentences'])} removed sentences:\n\n"
-        for i, sent in enumerate(changes["removed_sentences"], 1):
-            body += f"{i}. {sent}\n\n"
-    
-    body += "=" * 70 + "\n"
-    body += "This monitor runs every 3 hours on GitHub Actions.\n"
-    body += "=" * 70 + "\n"
+        
+        if changes.get("new_sentences"):
+            body += f"Found {len(changes['new_sentences'])} new/updated sentences:\n\n"
+            for i, sent in enumerate(changes["new_sentences"], 1):
+                body += f"{i}. {sent}\n\n"
+        else:
+            body += "No new sentences found.\n"
+        
+        if changes.get("removed_sentences"):
+            body += "\n" + "-" * 70 + "\n"
+            body += "REMOVED SECTIONS\n"
+            body += "-" * 70 + "\n\n"
+            for i, sent in enumerate(changes["removed_sentences"], 1):
+                body += f"{i}. {sent}\n\n"
+    else:
+        subject = f"BSUID DOCS CHECK - NO CHANGES - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        
+        body = "=" * 70 + "\n"
+        body += "BSUID DOCS CHECK - NO CHANGES DETECTED\n"
+        body += "=" * 70 + "\n\n"
+        body += f"URL: {url}\n"
+        body += f"Checked: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        body += "No changes detected in the last 3 hours.\n\n"
+        body += "=" * 70 + "\n"
+        body += "Monitoring continues every 3 hours.\n"
+        body += "=" * 70 + "\n"
 
     msg = MIMEMultipart()
     msg["From"] = SENDER_EMAIL
@@ -216,9 +224,12 @@ def main():
             
             if old_hash:
                 print(f"  CHANGE DETECTED! Sending email...")
-                send_email(title, url, changes)
+                send_email(title, url, changes, has_changes=True)
             else:
                 print(f"  Initial snapshot saved")
+        else:
+            print(f"  No change - sending check-in email...")
+            send_email(title, url, {}, has_changes=False)
         else:
             print(f"  No change")
         
