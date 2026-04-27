@@ -1,0 +1,7 @@
+.DS_Store
+__pycache__/
+*.pyc
+whatsapp_docs_state.json
+monitor.log
+monitor_error.log
+README.md
