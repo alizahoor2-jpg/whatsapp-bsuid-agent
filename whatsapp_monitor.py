@@ -106,7 +106,14 @@ def send_email(title, url, changes, has_changes=True):
         for i, sent in enumerate(changes["new"], 1):
             body += f"{i}. {sent}\n\n"
     else:
-        return False
+        subject = f"BSUID DOCS CHECK - NO CHANGES - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        body = "=" * 70 + "\nBSUID DOCS CHECK\n" + "=" * 70 + "\n\n"
+        body += f"URL: {url}\n"
+        body += f"Checked: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        body += "No new information added. Docs unchanged.\n"
+        body += "\n" + "=" * 70 + "\n"
+        body += "Monitoring continues every 3 hours.\n"
+        body += "=" * 70 + "\n"
 
     msg = MIMEMultipart()
     msg["From"] = SENDER_EMAIL
@@ -154,21 +161,17 @@ def main():
             old_content = state.get(title, {}).get("content", "")
             changes = analyze_changes(old_content, content)
             
-            # Only send email if there are NEW sentences added
-            if changes.get("new") and len(changes["new"]) > 0:
-                state[title] = {"hash": content_hash, "content": content, "last_checked": datetime.now().isoformat()}
-                save_state(state)
+            state[title] = {"hash": content_hash, "content": content, "last_checked": datetime.now().isoformat()}
+            save_state(state)
+            
+            if old_hash:
                 print("  CHANGE DETECTED! Sending email...")
                 send_email(title, url, changes, has_changes=True)
-            elif old_hash:
-                # Content changed but no new sentences - just save
-                state[title] = {"hash": content_hash, "content": content, "last_checked": datetime.now().isoformat()}
-                save_state(state)
-                print("  Content changed but no new info")
             else:
                 print("  Initial snapshot saved")
         else:
-            print("  No change")
+            print("  No change - sending check-in email...")
+            send_email(title, url, {}, has_changes=False)
     
     print("Done.")
 
