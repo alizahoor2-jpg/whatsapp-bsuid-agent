@@ -1,4 +1,4 @@
-name: BSUID Monitor
+name: BSUID Docs Monitor
 
 on:
   schedule:
@@ -8,9 +8,9 @@ on:
 jobs:
   monitor:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -19,10 +19,13 @@ jobs:
           
       - name: Install dependencies
         run: |
+          pip install playwright
           pip install -r requirements.txt
-          playwright install chromium
           
-      - name: Run monitor
+      - name: Install Playwright browsers
+        run: playwright install chromium
+          
+      - name: Run BSUID Monitor
         run: python3 whatsapp_monitor.py
         env:
           SENDER: mohdalizahoor@gmail.com
