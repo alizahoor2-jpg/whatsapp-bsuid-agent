@@ -201,7 +201,7 @@ def main():
         old_hash = state.get(title, {}).get("hash")
         
         need_save = False
-        
+
         if old_hash != content_hash:
             old_content = state.get(title, {}).get("content", "")
             changes = analyze_changes(old_content, content)
@@ -220,7 +220,7 @@ def main():
             else:
                 print(f"  Initial snapshot saved")
         else:
-            print(f"  No change - sending check-in email...")
+            print(f"  No change detected")
             send_email(title, url, {}, has_changes=False)
         
         if need_save:
