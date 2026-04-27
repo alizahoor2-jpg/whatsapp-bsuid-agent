@@ -5,7 +5,6 @@ import os
 import re
 import smtplib
 import ssl
-import time
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -29,34 +28,18 @@ RECIPIENT_EMAIL = os.getenv("RECIPIENT", "mohdalizahoor@gmail.com")
 
 def fetch_page(url):
     if not HAS_PLAYWRIGHT:
-        print("Playwright not installed")
-        return None, []
-        
+        return None
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
-            page = browser.new_page(
-                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-            )
+            page = browser.new_page(user_agent="Mozilla/5.0")
             page.goto(url, timeout=30000, wait_until="networkidle")
-            
-            sections = []
-            try:
-                section_elements = page.query_selector_all("h2[id], h3[id]")
-                for sec in section_elements:
-                    sid = sec.get_attribute("id")
-                    stext = sec.inner_text().strip()
-                    if sid and stext:
-                        sections.append((sid, stext))
-            except:
-                pass
-            
             html = page.content()
             browser.close()
-            return clean_html(html), sections
+            return clean_html(html)
     except Exception as e:
         print(f"Error: {e}")
-        return None, []
+        return None
 
 
 def clean_html(html):
@@ -69,7 +52,6 @@ def clean_html(html):
     html = re.sub(r"<[^>]+>", "", html)
     html = re.sub(r"\s+", " ", html)
     html = re.sub(r"&\w+;", " ", html)
-    html = re.sub(r"\u00a0", " ", html)
     return html.strip()
 
 
@@ -102,60 +84,37 @@ def get_sentences(content):
 def analyze_changes(old_content, new_content):
     old_sent = get_sentences(old_content)
     new_sent = get_sentences(new_content)
-    
-    added_sent = new_sent - old_sent
-    removed_sent = old_sent - new_sent
-    
-    return {
-        "new_sentences": list(added_sent),
-        "removed_sentences": list(removed_sent),
-    }
+    added = new_sent - old_sent
+    removed = old_sent - new_sent
+    return {"new": list(added), "removed": list(removed)}
 
 
 def send_email(title, url, changes, has_changes=True):
     if not SENDER_EMAIL or not SENDER_APP_PASSWORD or not RECIPIENT_EMAIL:
-        print("Email not configured")
         return False
 
     if has_changes:
         subject = f"BSUID DOCS UPDATED - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-        
-        body = "=" * 70 + "\n"
-        body += "META WHATSAPP BUSINESS SCOPED USER IDS (BSUID) DOCUMENTATION UPDATED\n"
-        body += "=" * 70 + "\n\n"
-        
+        body = "=" * 70 + "\nBSUID DOCS UPDATED\n" + "=" * 70 + "\n\n"
         body += f"URL: {url}\n"
         body += f"Checked: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         
-        body += "-" * 70 + "\n"
-        body += "NEW INFORMATION / UPDATED SENTENCES\n"
-        body += "-" * 70 + "\n\n"
-        
-        if changes.get("new_sentences"):
-            body += f"Found {len(changes['new_sentences'])} new/updated sentences:\n\n"
-            for i, sent in enumerate(changes["new_sentences"], 1):
+        if changes.get("new"):
+            body += f"Found {len(changes['new'])} new sentences:\n\n"
+            for i, sent in enumerate(changes["new"], 1):
                 body += f"{i}. {sent}\n\n"
-        else:
-            body += "No new sentences found.\n"
         
-        if changes.get("removed_sentences"):
-            body += "\n" + "-" * 70 + "\n"
-            body += "REMOVED SECTIONS\n"
-            body += "-" * 70 + "\n\n"
-            for i, sent in enumerate(changes["removed_sentences"], 1):
+        if changes.get("removed"):
+            body += "-" * 70 + "\n"
+            body += f"Removed {len(changes['removed'])} sentences:\n\n"
+            for i, sent in enumerate(changes["removed"], 1):
                 body += f"{i}. {sent}\n\n"
     else:
         subject = f"BSUID DOCS CHECK - NO CHANGES - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-        
-        body = "=" * 70 + "\n"
-        body += "BSUID DOCS CHECK - NO CHANGES DETECTED\n"
-        body += "=" * 70 + "\n\n"
+        body = "=" * 70 + "\nBSUID DOCS - NO CHANGES\n" + "=" * 70 + "\n\n"
         body += f"URL: {url}\n"
         body += f"Checked: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-        body += "No changes detected in the last 3 hours.\n\n"
-        body += "=" * 70 + "\n"
-        body += "Monitoring continues every 3 hours.\n"
-        body += "=" * 70 + "\n"
+        body += "No changes detected in the last 3 hours.\n"
 
     msg = MIMEMultipart()
     msg["From"] = SENDER_EMAIL
@@ -181,7 +140,6 @@ def send_email(title, url, changes, has_changes=True):
 def main():
     print(f"[{datetime.now()}] Checking BSUID docs...")
     print(f"Email: {SENDER_EMAIL}")
-    print(f"Playwright: {HAS_PLAYWRIGHT}")
     
     if not HAS_PLAYWRIGHT:
         print("ERROR: Playwright required")
@@ -191,40 +149,29 @@ def main():
     
     for title, url in DOCS_URLS:
         print(f"Fetching: {title}...")
-        content, sections = fetch_page(url)
+        content = fetch_page(url)
         
         if content is None:
-            print(f"  Failed to fetch")
+            print("  Failed to fetch")
             return
         
         content_hash = hash_content(content)
         old_hash = state.get(title, {}).get("hash")
         
-        need_save = False
-
         if old_hash != content_hash:
             old_content = state.get(title, {}).get("content", "")
             changes = analyze_changes(old_content, content)
-            
-            state[title] = {
-                "hash": content_hash,
-                "content": content,
-                "last_checked": datetime.now().isoformat()
-            }
-            
-            need_save = True
+            state[title] = {"hash": content_hash, "content": content, "last_checked": datetime.now().isoformat()}
+            save_state(state)
             
             if old_hash:
-                print(f"  CHANGE DETECTED! Sending email...")
+                print("  CHANGE DETECTED! Sending email...")
                 send_email(title, url, changes, has_changes=True)
             else:
-                print(f"  Initial snapshot saved")
+                print("  Initial snapshot saved")
         else:
-            print(f"  No change detected")
+            print("  No change - sending check-in email...")
             send_email(title, url, {}, has_changes=False)
-        
-        if need_save:
-            save_state(state)
     
     print("Done.")
 
